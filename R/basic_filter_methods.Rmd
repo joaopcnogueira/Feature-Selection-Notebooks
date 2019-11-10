@@ -1,0 +1,63 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(reticulate)
+
+data <- read_csv("datasets/santander.csv", n_max = 50000)
+
+# there is no missing data in the dataframe
+is.na(data) %>% sum()
+```
+
+# Train/Test Split
+```{r}
+set.seed(3896)
+split <- rsample::initial_split(data, prop = 0.7, strata = TARGET)
+
+train <- split %>% training()
+test <- split %>% testing()
+```
+
+# Removing zero variance variables
+```{r}
+pipeline <- recipe(train, TARGET ~ .) %>% 
+    step_zv(all_predictors()) %>% 
+    prep(train)
+
+# see all the variables removed - with zero variance
+pipeline %>% tidy(1)
+```
+
+
+# Doing the same from the previous step, but with the all dataset
+```{r}
+pipeline <- recipe(data, TARGET ~ .) %>% 
+    step_zv(all_predictors()) %>% 
+    prep(data)
+
+# 36 variables have the same value across all rows
+pipeline %>% tidy(1)
+```
+
+```{python}
+import pandas as pd
+df = r.data
+
+from sklearn.feature_selection import VarianceThreshold
+
+selector = VarianceThreshold(threshold=0)
+selector.fit(df)
+
+# Also, 36 variables have only a unique value across all rows
+sum([1 for x in selector.get_support() if x == False])
+```
+
